@@ -21,7 +21,7 @@ local function Locals()
 	Enemy13Y, Enemy13YC = Player:GetEnemies(13)
 	Enemy10Y, Enemy10YC = Player:GetEnemies(10)
     Enemy35Y, Enemy35YC = Player:GetEnemies(35)
-    Hostile10, Hostile10C = Player:GetHostiles(11)
+    Hostile10, Hostile10C = Player:GetHostiles(10)
     Hostile6, Hostile6C = Player:GetHostiles(6)
 end
 
@@ -220,7 +220,7 @@ function Mage.Rotation()
 
 
 
-        if not Player.Moving and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and Target.Distance < 16 and DMW.Player.Equipment[18] and (Player.Level < 15 or Target.HP < 8) then
+        if not Player.Moving and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and Target.Distance < 16 and DMW.Player.Equipment[18] and Target.HP < 8 then
             SpellStopCasting()
             if Spell.Shoot:Cast(Target) then
                 WandTime = DMW.Time
@@ -229,8 +229,8 @@ function Mage.Rotation()
             return
         end
 
-        -- Let's just wand in melee distance, knockback is aids and a huge dps loss below level 16 or execute with wand. MP5
-        if Target.Distance < 16 and DMW.Player.Equipment[18] and (Player.Level < 15 or Target.HP < 8) then
+        -- Wand Execution
+        if Target.Distance < 16 and DMW.Player.Equipment[18] and Target.HP < 8 then
             return
         end
 
