@@ -5,6 +5,8 @@ local Setting = DMW.Helpers.Rotation.Setting
 local Player, Buff, Debuff, Spell, Target, Talent, Item, GCD, CDs, HUD, Enemy20Y, Enemy20YC, Enemy30Y, Enemy30YC, Enemy10Y, Enemy10YC, Hostile10, Hostile10C, Hostile6, Hostile6C
 local WandTime = GetTime()
 local ItemUsage = GetTime()
+-- We disable casting check to be able to do stuff.
+DMW.Helpers.Rotation.CastingCheck = false
 
 local function Locals()
     Player = DMW.Player
@@ -106,7 +108,7 @@ local function Wand()
 end
 
 local function SheepNearby()
-    local Enemies = Player:GetHostiles(12)
+    local Enemies = Player:GetHostiles(14)
     for i, Unit in ipairs(Enemies) do
         if Debuff.Polymorph:Exist(Unit) then
             return true
@@ -212,25 +214,18 @@ function Mage.Rotation()
             return true
         end
 
-        if Hostile10C > 0 and Hostile6C == 0 and not Hostile10[1]:HasMovementFlag(DMW.Enums.MovementFlags.Root) and Hostile10[1].TTD > 2.5 and not SheepNearby() then
+        if Hostile10C > 0 and not Hostile10[1]:HasMovementFlag(DMW.Enums.MovementFlags.Root) and Hostile10[1].TTD > 2.5 and not SheepNearby() then
             if Spell.FrostNova:IsReady() and Spell.FrostNova:Cast(Player) then
                 return true
             end
         end
 
-
-
-        if not Player.Moving and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and Target.Distance < 16 and DMW.Player.Equipment[18] and Target.HP < 8 then
-            SpellStopCasting()
+        if not Player.Moving and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and DMW.Player.Equipment[18] and Target.HP < 20 then
+            if Player.Casting then SpellStopCasting() end
             if Spell.Shoot:Cast(Target) then
                 WandTime = DMW.Time
                 return true
             end
-            return
-        end
-
-        -- Wand Execution
-        if Target.Distance < 16 and DMW.Player.Equipment[18] and Target.HP < 8 then
             return
         end
 
@@ -260,6 +255,11 @@ function Mage.Rotation()
                     end
                 end
             end
+        end
+
+        -- Wand Execution
+        if DMW.Player.Equipment[18] and Target.HP < 20 then
+            return
         end
 
         if not DMW.Player.Combat then
