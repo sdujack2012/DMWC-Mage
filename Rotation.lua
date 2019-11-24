@@ -5,8 +5,6 @@ local Setting = DMW.Helpers.Rotation.Setting
 local Player, Buff, Debuff, Spell, Target, Talent, Item, GCD, CDs, HUD, Enemy20Y, Enemy20YC, Enemy30Y, Enemy30YC, Enemy10Y, Enemy10YC, Hostile10, Hostile10C, Hostile6, Hostile6C
 local WandTime = GetTime()
 local ItemUsage = GetTime()
--- We disable casting check to be able to do stuff.
-DMW.Helpers.Rotation.CastingCheck = false
 
 local function Locals()
     Player = DMW.Player
@@ -249,7 +247,6 @@ function Mage.Rotation()
         end
 
         if not Player.Moving and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and DMW.Player.Equipment[18] and Target.HP < 20 then
-            if Player.Casting and Spell.Frostbolt:LastCast() then SpellStopCasting() end
             if Spell.Shoot:Cast(Target) then
                 WandTime = DMW.Time
                 return true
