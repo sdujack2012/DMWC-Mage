@@ -220,15 +220,6 @@ function Mage.Rotation()
             end
         end
 
-        if not Player.Moving and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and DMW.Player.Equipment[18] and Target.HP < 20 then
-            if Player.Casting then SpellStopCasting() end
-            if Spell.Shoot:Cast(Target) then
-                WandTime = DMW.Time
-                return true
-            end
-            return
-        end
-
         if Setting("Use Counterspell") then
             if Target and Target:Interrupt() then if Spell.Counterspell:Cast(Target) then return true end end
 
@@ -257,10 +248,20 @@ function Mage.Rotation()
             end
         end
 
+        if not Player.Moving and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and DMW.Player.Equipment[18] and Target.HP < 20 then
+            if Player.Casting and Spell.Frostbolt:LastCast() then SpellStopCasting() end
+            if Spell.Shoot:Cast(Target) then
+                WandTime = DMW.Time
+                return true
+            end
+            return
+        end
+        
         -- Wand Execution
         if DMW.Player.Equipment[18] and Target.HP < 20 then
             return
         end
+        
 
         if not DMW.Player.Combat then
             if Target and Target.Facing and not Player.Moving and Spell.Frostbolt:Cast(Target) then
