@@ -260,7 +260,7 @@ function Mage.Rotation()
         end
         
 
-        if not DMW.Player.Combat then
+        if not DMW.Player.Combat and Spell.Frostbolt:Known() then
             if Target and Target.Facing and not Player.Moving and Spell.Frostbolt:Cast(Target) then
                 return true
             end
