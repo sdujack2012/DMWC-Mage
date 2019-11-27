@@ -106,7 +106,7 @@ local function Wand()
 end
 
 local function SheepNearby()
-    local Enemies = Player:GetHostiles(14)
+    local Enemies = Player:GetAttackable(15)
     for i, Unit in ipairs(Enemies) do
         if Debuff.Polymorph:Exist(Unit) then
             return true
@@ -116,29 +116,16 @@ local function SheepNearby()
 end
 
 local function Defensive()
-    if Setting("Ice Block") and Spell.IceBlock:IsReady() and Player.HP < Setting("Ice Block HP") and Player.Combat and Spell.IceBlock:Cast(Player) then
-	    return true
-	end
     if Setting("Ice Barrier") and Spell.IceBarrier:IsReady() and not Buff.IceBarrier:Exist(player) and Spell.IceBarrier:Cast(Player) then
 	    return true
 	end
     if Setting("Healthstone") and Player.HP < Setting("Healthstone HP") and (Item.MajorHealthstone:Use(Player) or Item.GreaterHealthstone:Use(Player) or Item.Healthstone:Use(Player) or Item.LesserHealthstone:Use(Player) or Item.MinorHealthstone:Use(Player)) then
         return true
     end
-	if Setting("Frost Nova") and Spell.FrostNova:IsReady() and #Player:GetEnemies(14) >= Setting("Frost Nova Amount") and Spell.FrostNova:Cast(Player) then
-		return true
-	end
-	if Setting("Cone of Cold") and Spell.ConeOfCold:IsReady() and Target.Facing and Target.Distance < 8 and select(2, Target:GetEnemies(8, 2)) >= Setting("Cone of Cold Units") and Spell.ConeOfCold:Cast(Player) then
-	  return true
-	end
     if Setting("Mana Gem Usage") and Player.PowerPct < Setting("Gem Mana") and (DMW.Time - ItemUsage) > 0.2 and (Item.ManaRuby:Use(Player) or Item.ManaCitrine:Use(Player) or Item.ManaJade:Use(Player) or Item.ManaAgate:Use(Player)) then
         ItemUsage = DMW.Time
         return true
     end 
-	if Setting("Luffa") and Item.Luffa:Equipped() and (DMW.Time - ItemUsage) > 0.2 and Player:Dispel(Item.Luffa) and Item.Luffa:Use(Player) then
-        ItemUsage = DMW.Time
-        return true
-    end
 
 	if Setting("Use Best HP Potion available") then
 		if Player.HP <= Setting("Use Potion at % HP") and Player.Combat then
@@ -212,9 +199,11 @@ function Mage.Rotation()
             return true
         end
 
-        if Hostile10C > 0 and not Hostile10[1]:HasMovementFlag(DMW.Enums.MovementFlags.Root) and Hostile10[1].TTD > 2.5 and not SheepNearby() then
-            if Spell.FrostNova:IsReady() and Spell.FrostNova:Cast(Player) then
-                return true
+        if Setting("Kite") then
+            if Hostile10C > 0 and not Hostile10[1]:HasMovementFlag(DMW.Enums.MovementFlags.Root) and Hostile10[1].TTD > 2.5 and not SheepNearby() then
+                if Spell.FrostNova:IsReady() and Spell.FrostNova:Cast(Player) then
+                    return true
+                end
             end
         end
 
@@ -260,7 +249,7 @@ function Mage.Rotation()
         end
         
 
-        if not DMW.Player.Combat and Spell.Frostbolt:Known() then
+        if not DMW.Player.Combat and Setting("Frostbolt") then
             if Target and Target.Facing and not Player.Moving and Spell.Frostbolt:Cast(Target) then
                 return true
             end
@@ -271,12 +260,6 @@ function Mage.Rotation()
             StartAttack()
         end
 
-		if Setting("Arcane explosion") and Player.PowerPct >= Setting("Arcane Explosion Mana") and #Player:GetEnemies(9) >= Setting("Arcane Explosion Unit") and Spell.ArcaneExplosion:Cast(Player) then
-		    return true
-		end
-        if Setting("Blizzard") and Target.Facing and not Player.Moving and Target.Distance <= 15 and Target.TTD > 4 and Player.PowerPct >= Setting("Blizzard Mana") and select(2, Target:GetEnemies(8, 2)) >= Setting("Blizzard Units") and Spell.Blizzard:Cast(Target) then
-            return true
-        end
         if Setting("Fireball") and Target.Facing and not Player.Moving and Player.PowerPct >= Setting("Fireball Mana") and (Target.TTD > Spell.Fireball:CastTime() or (Target.Distance > 5 and not DMW.Player.Equipment[18])) and (not Setting("Frostbolt") or Player.PowerPct < Setting("Frostbolt Mana") or Debuff.Frostbolt:Remain(Target) > Spell.Fireball:CastTime() or (Spell.Frostbolt:LastCast() and UnitIsUnit(Spell.Frostbolt.LastBotTarget, Target.Pointer))) and Spell.Fireball:Cast(Target) then
             return true
         end
