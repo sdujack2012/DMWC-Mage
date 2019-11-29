@@ -235,17 +235,19 @@ function Mage.Rotation()
             end
         end
 
-        if not Player.Moving and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and DMW.Player.Equipment[18] and Target.HP < 20 then
-            if Spell.Shoot:Cast(Target) then
-                WandTime = DMW.Time
-                return true
+        if Setting("Wand Execute") then
+            if not Player.Moving and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and DMW.Player.Equipment[18] and Target.HP < 20 then
+                if Spell.Shoot:Cast(Target) then
+                    WandTime = DMW.Time
+                    return true
+                end
+                return
             end
-            return
-        end
-        
-        -- Wand Execution
-        if DMW.Player.Equipment[18] and Target.HP < 20 then
-            return
+            
+            -- Wand Execution
+            if DMW.Player.Equipment[18] and Target.HP < 20 then
+                return
+            end
         end
         
 
