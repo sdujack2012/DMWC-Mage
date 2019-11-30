@@ -118,7 +118,7 @@ local function NoAoe()
             return true
         end
     end
-    
+
     return false
 end
 
@@ -274,7 +274,7 @@ function Mage.Rotation()
             return true
         end
         if Setting("Fire Blast") then
-            if Target.Facing and Target.Distance <= 20 and Player.PowerPct >= Setting("Fire Blast Mana") and not Spell.FrostNova:LastCast() and Spell.FireBlast:Cast(Target) then
+            if Target.Facing and not Debuff.Polymorph:Exist(Target) and Target.Distance <= 20 and Player.PowerPct >= Setting("Fire Blast Mana") and not Spell.FrostNova:LastCast() and Spell.FireBlast:Cast(Target) then
                 return true
             end
         end
