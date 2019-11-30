@@ -105,13 +105,20 @@ local function Wand()
     end
 end
 
-local function SheepNearby()
+local function NoAoe()
     local Enemies = Player:GetAttackable(15)
     for i, Unit in ipairs(Enemies) do
         if Debuff.Polymorph:Exist(Unit) then
             return true
         end
     end
+
+    for i, Unit in ipairs(Enemies) do
+        if not Unit.Target and Unit.HP >= 20 then
+            return true
+        end
+    end
+    
     return false
 end
 
@@ -200,11 +207,12 @@ function Mage.Rotation()
         end
 
         if Setting("Kite") then
-            if Hostile10C > 0 and not Hostile10[1]:HasMovementFlag(DMW.Enums.MovementFlags.Root) and Hostile10[1].TTD > 2.5 and not SheepNearby() then
+            if Hostile10C > 0 and not Hostile10[1]:HasMovementFlag(DMW.Enums.MovementFlags.Root) and Hostile10[1].TTD > 2.5 and not NoAoe() then
                 if Spell.FrostNova:IsReady() and Spell.FrostNova:Cast(Player) then
                     return true
                 end
             end
+            
         end
 
         if Setting("Use Counterspell") then
