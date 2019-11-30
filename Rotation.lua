@@ -122,6 +122,16 @@ local function NoAoe()
     return false
 end
 
+local function EvocationInCombat()
+    local Enemies = Player:GetEnemies(25)
+    for i, Unit in ipairs(Enemies) do
+        if i <= 1 and not Unit.Casting and (Debuff.Polymorph:Exist(Unit) and not Unit.Target) or (Unit.Distance > 6 and Debuff.FrostNova:Remain(Unit) > 8) or (Unit.Distance > 11 and Debuff.FrostNova:Remain(Unit) > 6) then
+            return true
+        end
+    end
+end
+
+
 local function Defensive()
     if Setting("Ice Barrier") and Spell.IceBarrier:IsReady() and not Buff.IceBarrier:Exist(player) and Spell.IceBarrier:Cast(Player) then
 	    return true
@@ -161,6 +171,12 @@ local function Defensive()
 				RunMacroText("/use " .. name)
 				return true
 			end
+		end
+    end
+    
+    if Setting("Evocation") and not Player.Moving and EvocationInCombat() and Player.Combat and Player.PowerPct < 30 then 
+	    if Spell.Evocation:IsReady() and Spell.Evocation:Cast(Player) then
+		    return true
 		end
 	end
 end
@@ -244,7 +260,7 @@ function Mage.Rotation()
         end
 
         if Setting("Wand Execute") then
-            if not Player.Moving and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and DMW.Player.Equipment[18] and Target.HP < 20 then
+            if not Player.Moving and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and DMW.Player.Equipment[18] and Target.HP <= Setting("Wand Execute %") then
                 if Spell.Shoot:Cast(Target) then
                     WandTime = DMW.Time
                     return true
@@ -253,7 +269,7 @@ function Mage.Rotation()
             end
             
             -- Wand Execution
-            if DMW.Player.Equipment[18] and Target.HP < 20 then
+            if DMW.Player.Equipment[18] and Target.HP <= Setting("Wand Execute %") then
                 return
             end
         end
