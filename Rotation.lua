@@ -2,7 +2,7 @@ local DMW = DMW
 local Mage = DMW.Rotations.MAGE
 local Rotation = DMW.Helpers.Rotation
 local Setting = DMW.Helpers.Rotation.Setting
-local Player, Buff, Debuff, Spell, Target, Talent, Item, GCD, CDs, HUD, Enemy20Y, Enemy20YC, Enemy30Y, Enemy30YC, Enemy10Y, Enemy10YC, Hostile10, Hostile10C, Hostile6, Hostile6C
+local Player, MovingToSafeSpot, safeSpot, safeX, safeY, safeZ, Buff, Debuff, Spell, Target, Talent, Item, GCD, CDs, HUD, Enemy20Y, Enemy20YC, Enemy30Y, Enemy30YC, Enemy10Y, Enemy10YC, Hostile10, Hostile10C, Hostile6, Hostile6C
 local WandTime = GetTime()
 local ItemUsage = GetTime()
 
@@ -97,9 +97,7 @@ local function CreateManaAgent()
 end
 
 local function Wand()
-    if not Player.Moving and not DMW.Helpers.Queue.Spell and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and (Target.Distance > 1 or not Setting("Auto Attack In Melee")) and
-    (not Setting("Frostbolt") or Player.PowerPct <= Setting("Frostbolt Mana")) and (not Setting("Fireball") or Player.PowerPct <= Setting("Fireball Mana"))
-    and Spell.Shoot:Cast(Target) then
+    if not Player.Moving and not DMW.Helpers.Queue.Spell and not IsAutoRepeatSpell(Spell.Shoot.SpellName) and (DMW.Time - WandTime) > 0.7 and (Target.Distance > 1 or not Setting("Auto Attack In Melee")) and Spell.Shoot:Cast(Target) then
         WandTime = DMW.Time
         return true
     end
@@ -133,6 +131,31 @@ end
 
 
 local function Defensive()
+    if Setting("Kite") and MovingToSafeSpot and not DMW.Player.Rooted then
+        MoveTo(safeX, safeY, safeZ)
+        return
+    end
+
+    if Setting("Kite") and not MovingToSafeSpot and (Debuff.FrostNova:Remain(Target) > 4 or Debuff.Frostbite:Remain(Target) > 4) and Target.Distance < 6 then
+        local rx, ry, rz = GetPositionFromPosition(DMW.Player.Target.PosX, DMW.Player.Target.PosY, DMW.Player.Target.PosZ, -15, ObjectFacing('player'), 180 / 1000)
+        local isSafe = false
+        local inWater = TraceLine(rx, ry, rz, rx, ry, rz - 100, 0x10000)
+
+        if not inWater then
+            rz = select(3, TraceLine(rx, ry, 9999, rx, ry, -9999, 0x110)) or 0
+            local heightdiff = math.abs(rz - DMW.Player.PosZ)
+                isSafe = true
+                safeX = rx
+                safeY = ry
+                safeZ = rz
+        end
+       
+        if isSafe and not DMW.Player.Rooted  then 
+            MovingToSafeSpot = true
+            C_Timer.After(2, function() MovingToSafeSpot = false end)
+        end
+    end
+    
     if Setting("Ice Barrier") and Spell.IceBarrier:IsReady() and not Buff.IceBarrier:Exist(player) and Spell.IceBarrier:Cast(Player) then
 	    return true
 	end
@@ -216,7 +239,7 @@ function Mage.Rotation()
             return true
         end	
     end
-	
+    
     if Target and Target.ValidEnemy and Target.Distance < 40 then
         if Defensive() then
             return true
@@ -285,7 +308,7 @@ function Mage.Rotation()
         if (not DMW.Player.Equipment[18] or (Target.Distance <= 1 and Setting("Auto Attack In Melee"))) and not IsCurrentSpell(Spell.Attack.SpellID) then
             StartAttack()
         end
-
+        
         if Setting("Fireball") and Target.Facing and not Player.Moving and Player.PowerPct >= Setting("Fireball Mana") and (Target.TTD > Spell.Fireball:CastTime() or (Target.Distance > 5 and not DMW.Player.Equipment[18])) and (not Setting("Frostbolt") or Player.PowerPct < Setting("Frostbolt Mana") or Debuff.Frostbolt:Remain(Target) > Spell.Fireball:CastTime() or (Spell.Frostbolt:LastCast() and UnitIsUnit(Spell.Frostbolt.LastBotTarget, Target.Pointer))) and Spell.Fireball:Cast(Target) then
             return true
         end
@@ -294,6 +317,7 @@ function Mage.Rotation()
                 return true
             end
         end
+        
         if Setting("Frostbolt") and Target.Facing and not Player.Moving and Player.PowerPct >= Setting("Frostbolt Mana") and Spell.Frostbolt:Cast(Target) then
             return true
         end
