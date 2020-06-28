@@ -312,6 +312,13 @@ function Mage.Rotation()
         if Setting("Fireball") and Target.Facing and not Player.Moving and Player.PowerPct >= Setting("Fireball Mana") and (Target.TTD > Spell.Fireball:CastTime() or (Target.Distance > 5 and not DMW.Player.Equipment[18])) and (not Setting("Frostbolt") or Player.PowerPct < Setting("Frostbolt Mana") or Debuff.Frostbolt:Remain(Target) > Spell.Fireball:CastTime() or (Spell.Frostbolt:LastCast() and UnitIsUnit(Spell.Frostbolt.LastBotTarget, Target.Pointer))) and Spell.Fireball:Cast(Target) then
             return true
         end
+        
+        if Setting("Use Cone Of Cold") then
+            if Target.Facing and not Debuff.Polymorph:Exist(Target) and Target.Distance <= 8 and Player.PowerPct >= Setting("Cone Of Cold Mana") and not Spell.FrostNova:LastCast() and Spell.ConeOfCold:Cast(Player) then
+                return true
+            end
+        end
+
         if Setting("Fire Blast") then
             if Target.Facing and not Debuff.Polymorph:Exist(Target) and Target.Distance <= 20 and Player.PowerPct >= Setting("Fire Blast Mana") and not Spell.FrostNova:LastCast() and Spell.FireBlast:Cast(Target) then
                 return true
