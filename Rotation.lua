@@ -136,7 +136,7 @@ local function Defensive()
         return
     end
 
-    if Setting("Kite") and not MovingToSafeSpot and (Debuff.FrostNova:Remain(Target) > 4 or Debuff.Frostbite:Remain(Target) > 4) and Target.Distance < 6 then
+    if Setting("Kite") and not MovingToSafeSpot and (Debuff.FrostNova:Remain(Target) > 3 or Debuff.Frostbite:Remain(Target) > 3) and Target.Distance < 6 then
         local rx, ry, rz = GetPositionFromPosition(DMW.Player.Target.PosX, DMW.Player.Target.PosY, DMW.Player.Target.PosZ, -15, ObjectFacing('player'), 180 / 1000)
         local isSafe = false
         local inWater = TraceLine(rx, ry, rz, rx, ry, rz - 100, 0x10000)
@@ -245,8 +245,8 @@ function Mage.Rotation()
             return true
         end
 
-        if Setting("Kite") then
-            if Hostile10C > 0 and not Hostile10[1]:HasMovementFlag(DMW.Enums.MovementFlags.Root) and Hostile10[1].TTD > 2.5 and not NoAoe() then
+        if Setting("Kite") and Target.HP >= Setting("Kite HP %")then
+            if Hostile10C > 0 and not Hostile10[1]:HasMovementFlag(DMW.Enums.MovementFlags.Root) and Hostile10[1].TTD > 2.5 and not NoAoe() and not Debuff.Frostbite:Exist(Target) then
                 if Spell.FrostNova:IsReady() and Spell.FrostNova:Cast(Player) then
                     return true
                 end
@@ -308,27 +308,29 @@ function Mage.Rotation()
         if (not DMW.Player.Equipment[18] or (Target.Distance <= 1 and Setting("Auto Attack In Melee"))) and not IsCurrentSpell(Spell.Attack.SpellID) then
             StartAttack()
         end
-        
-        if Setting("Fireball") and Target.Facing and not Player.Moving and Player.PowerPct >= Setting("Fireball Mana") and (Target.TTD > Spell.Fireball:CastTime() or (Target.Distance > 5 and not DMW.Player.Equipment[18])) and (not Setting("Frostbolt") or Player.PowerPct < Setting("Frostbolt Mana") or Debuff.Frostbolt:Remain(Target) > Spell.Fireball:CastTime() or (Spell.Frostbolt:LastCast() and UnitIsUnit(Spell.Frostbolt.LastBotTarget, Target.Pointer))) and Spell.Fireball:Cast(Target) then
-            return true
-        end
-        
+
         if Setting("Use Cone Of Cold") then
-            if Target.Facing and not Debuff.Polymorph:Exist(Target) and Target.Distance <= 8 and Player.PowerPct >= Setting("Cone Of Cold Mana") and not Spell.FrostNova:LastCast() and Spell.ConeOfCold:Cast(Player) then
+            if Target.Facing and not Debuff.Polymorph:Exist(Target) and Target.Distance <= 8 and Player.PowerPct >= Setting("Cone Of Cold Mana") and Spell.ConeOfCold:Cast(Player) then
                 return true
             end
         end
 
         if Setting("Fire Blast") then
-            if Target.Facing and not Debuff.Polymorph:Exist(Target) and Target.Distance <= 20 and Player.PowerPct >= Setting("Fire Blast Mana") and not Spell.FrostNova:LastCast() and Spell.FireBlast:Cast(Target) then
+            if Target.Facing and not Debuff.Frostbite:Exist(Target) and not Debuff.Polymorph:Exist(Target) and not Debuff.FrostNova:Exist(Target) and Target.Distance <= 20 and Player.PowerPct >= Setting("Fire Blast Mana") and Spell.FireBlast:Cast(Target) then
                 return true
             end
         end
         
+        if Setting("Fireball") and Target.Facing and not Player.Moving and Player.PowerPct >= Setting("Fireball Mana") and (Target.TTD > Spell.Fireball:CastTime() or (Target.Distance > 5 and not DMW.Player.Equipment[18])) and (not Setting("Frostbolt") or Player.PowerPct < Setting("Frostbolt Mana") or Debuff.Frostbolt:Remain(Target) > Spell.Fireball:CastTime() or (Spell.Frostbolt:LastCast() and UnitIsUnit(Spell.Frostbolt.LastBotTarget, Target.Pointer))) and Spell.Fireball:Cast(Target) then
+            return true
+        end
+        
+        
         if Setting("Frostbolt") and Target.Facing and not Player.Moving and Player.PowerPct >= Setting("Frostbolt Mana") and Spell.Frostbolt:Cast(Target) then
             return true
         end
-        if DMW.Player.Equipment[18] and not Player.Moving and Wand() then
+
+        if Target.Facing and DMW.Player.Equipment[18] and not Player.Moving and Wand() then
             return true
         end
     end
