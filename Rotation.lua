@@ -120,13 +120,23 @@ local function NoAoe()
     return false
 end
 
-local function EvocationInCombat()
+local function SafeChannelInCombat()
     local Enemies = Player:GetEnemies(25)
+    local hasIceBarrier = Buff.IceBarrier:Exist(Player)
+    if hasIceBarrier then
+        return true
+    end
+
     for i, Unit in ipairs(Enemies) do
-        if i <= 1 and not Unit.Casting and (Debuff.Polymorph:Exist(Unit) and not Unit.Target) or (Unit.Distance > 6 and Debuff.FrostNova:Remain(Unit) > 8) or (Unit.Distance > 11 and Debuff.FrostNova:Remain(Unit) > 6) then
-            return true
+        if  not (not UnitIsUnit(Unit.Target, "player") or 
+            Debuff.Polymorph:Exist(Unit) or 
+            (not Unit.Casting and (Unit.Distance > 6 and Debuff.FrostNova:Remain(Unit) > 5) or (Unit.Distance > 11 and Debuff.FrostNova:Remain(Unit) > 3)))
+             then 
+            return false
         end
     end
+
+    return true
 end
 
 
@@ -156,7 +166,7 @@ local function Defensive()
         end
     end
     
-    if Setting("Ice Barrier") and Spell.IceBarrier:IsReady() and not Buff.IceBarrier:Exist(player) and Spell.IceBarrier:Cast(Player) then
+    if Setting("Ice Barrier") and Player.HP < Setting("Ice Barrier HP") and Spell.IceBarrier:IsReady() and not Buff.IceBarrier:Exist(player) and Spell.IceBarrier:Cast(Player) then
 	    return true
 	end
     if Setting("Healthstone") and Player.HP < Setting("Healthstone HP") and (Item.MajorHealthstone:Use(Player) or Item.GreaterHealthstone:Use(Player) or Item.Healthstone:Use(Player) or Item.LesserHealthstone:Use(Player) or Item.MinorHealthstone:Use(Player)) then
@@ -197,11 +207,24 @@ local function Defensive()
 		end
     end
     
-    if Setting("Evocation") and not Player.Moving and EvocationInCombat() and Player.Combat and Player.PowerPct < 30 then 
+    if Setting("Evocation") and not Player.Moving and SafeChannelInCombat() and Player.Combat and Player.PowerPct < 30 then 
 	    if Spell.Evocation:IsReady() and Spell.Evocation:Cast(Player) then
 		    return true
 		end
-	end
+    end
+
+    if  Setting("Use bandage") and 
+        Setting("Use bandage HP") < Player.HP 
+        and not Player.RecentlyBandaged 
+        and not Player.Moving 
+        and SafeChannelInCombat()  
+        and Player.Combat then
+            local bandage = getBestUsableBandage()
+            if(bandage) then
+                UseItemByName(bandage.Name, 'player')
+                return true
+            end    
+    end 
 end
 
 local function AutoBuff()
@@ -310,13 +333,13 @@ function Mage.Rotation()
         end
 
         if Setting("Use Cone Of Cold") then
-            if Target.Facing and not Debuff.Polymorph:Exist(Target) and Target.Distance <= 8 and Player.PowerPct >= Setting("Cone Of Cold Mana") and Spell.ConeOfCold:Cast(Player) then
+            if Target.Facing and not Debuff.Polymorph:Exist(Target) and Debuff.Frostbite:Remain(Target) <= 2 and Debuff.FrostNova:Remain(Target) <= 2 and Target.Distance <= 8 and Player.PowerPct >= Setting("Cone Of Cold Mana") and Spell.ConeOfCold:Cast(Player) then
                 return true
             end
         end
 
         if Setting("Fire Blast") then
-            if Target.Facing and not Debuff.Frostbite:Exist(Target) and not Debuff.Polymorph:Exist(Target) and not Debuff.FrostNova:Exist(Target) and Target.Distance <= 20 and Player.PowerPct >= Setting("Fire Blast Mana") and Spell.FireBlast:Cast(Target) then
+            if Target.Facing and not Debuff.Polymorph:Exist(Target) and Debuff.Frostbite:Remain(Target) <= 2 and Debuff.FrostNova:Remain(Target) <= 2 and Target.Distance <= 20 and Player.PowerPct >= Setting("Fire Blast Mana") and Spell.FireBlast:Cast(Target) then
                 return true
             end
         end
@@ -330,7 +353,7 @@ function Mage.Rotation()
             return true
         end
 
-        if Target.Facing and DMW.Player.Equipment[18] and not Player.Moving and Wand() then
+        if Player:GCDRemain() == 0 and Target.Facing and DMW.Player.Equipment[18] and not Player.Moving and Wand() then
             return true
         end
     end
