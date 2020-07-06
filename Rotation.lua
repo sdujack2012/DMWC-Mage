@@ -122,7 +122,7 @@ end
 
 local function SafeChannelInCombat()
     local Enemies = Player:GetEnemies(25)
-    local hasIceBarrier = Buff.IceBarrier:Exist(Player)
+    local hasIceBarrier = Buff.IceBarrier:Remain(Player) > 5
     if hasIceBarrier then
         return true
     end
@@ -130,8 +130,8 @@ local function SafeChannelInCombat()
     for i, Unit in ipairs(Enemies) do
         if  not (not UnitIsUnit(Unit.Target, "player") or 
             Debuff.Polymorph:Exist(Unit) or 
-            (not Unit.Casting and (Unit.Distance > 6 and Debuff.FrostNova:Remain(Unit) > 5) or (Unit.Distance > 11 and Debuff.FrostNova:Remain(Unit) > 3)))
-             then 
+            (not Unit.Casting and (Unit.Distance > 7 and Debuff.FrostNova:Remain(Unit) > 5) or (Unit.Distance > 15 and (Debuff.FrostNova:Remain(Unit) > 3 or Debuff.Frostbite:Remain(Unit) > 3))))
+            then 
             return false
         end
     end
@@ -139,31 +139,142 @@ local function SafeChannelInCombat()
     return true
 end
 
+local function GetSafeSpot()
+    local rx, ry, rz = GetPositionFromPosition(DMW.Player.Target.PosX, DMW.Player.Target.PosY, DMW.Player.Target.PosZ, -15, ObjectFacing('player'), 180 / 1000)
+    local isSafe = false
+    local inWater = TraceLine(rx, ry, rz, rx, ry, rz - 100, 0x10000)
 
-local function Defensive()
-    if Setting("Kite") and MovingToSafeSpot and not DMW.Player.Rooted then
-        MoveTo(safeX, safeY, safeZ)
-        return
+    if not inWater then
+        rz = select(3, TraceLine(rx, ry, 9999, rx, ry, -9999, 0x110)) or 0
+        local heightdiff = math.abs(rz - DMW.Player.PosZ)
+            isSafe = true
+            safeX = rx
+            safeY = ry
+            safeZ = rz
+    end
+       
+    if isSafe and not DMW.Player.Rooted  then 
+        MovingToSafeSpot = true
+        C_Timer.After(2, function() MovingToSafeSpot = false end)
     end
 
-    if Setting("Kite") and not MovingToSafeSpot and (Debuff.FrostNova:Remain(Target) > 3 or Debuff.Frostbite:Remain(Target) > 3) and Target.Distance < 6 then
-        local rx, ry, rz = GetPositionFromPosition(DMW.Player.Target.PosX, DMW.Player.Target.PosY, DMW.Player.Target.PosZ, -15, ObjectFacing('player'), 180 / 1000)
-        local isSafe = false
-        local inWater = TraceLine(rx, ry, rz, rx, ry, rz - 100, 0x10000)
+    return isSafe
+end
 
-        if not inWater then
-            rz = select(3, TraceLine(rx, ry, 9999, rx, ry, -9999, 0x110)) or 0
-            local heightdiff = math.abs(rz - DMW.Player.PosZ)
-                isSafe = true
-                safeX = rx
-                safeY = ry
-                safeZ = rz
+local function IsDistanceSafe(Unit)
+    return (Debuff.FrostNova:Remain(Unit) > 3 or Debuff.Frostbite:Remain(Unit) > 3 or Debuff.Polymorph:Remain(Unit) > 3) and Unit.Distance < 8
+end
+
+local SquenceAction = { Timeout = 0 }
+
+function SquenceAction:isBusy() 
+    return self.Actions ~= nil and #self.Actions > 0
+end
+
+function SquenceAction:setSequence(actions) 
+    self.Actions = actions
+end
+
+function SquenceAction:clearSequence() 
+    self.Actions = {}
+end
+
+function SquenceAction:setTimeout(timeout) 
+    self.Timeout = timeout
+end
+
+function SquenceAction:doNext() 
+    if self.Actions ~= nil and #self.Actions > 0 then
+        local nextAction = self.Actions[1]
+        if nextAction.isActionable() then
+            nextAction:act()
         end
-       
-        if isSafe and not DMW.Player.Rooted  then 
-            MovingToSafeSpot = true
-            C_Timer.After(2, function() MovingToSafeSpot = false end)
+
+        if nextAction.onlyOnce or (nextAction.removeWhen ~= nil and nextAction:removeWhen()) then 
+            print("table.remove(self.Actions, 1)")
+            table.remove(self.Actions, 1)
         end
+
+        if self.Timeout == 0 and nextAction.timeout ~= nil then
+             SquenceAction:setTimeout(nextAction.timeout) 
+             C_Timer.After(nextAction.timeout, function() 
+                table.remove(self.Actions, 1)
+                SquenceAction:setTimeout(0) 
+            end)
+        end
+    end
+end
+
+
+local bandageSequence = {
+    {
+        isActionable = function()
+            return not SafeChannelInCombat() and (Spell.IceBarrier:IsReady() or (Spell.ColdSnap:IsReady() and Spell.ColdSnap:Cast(Player)))
+        end,
+        act = function()
+            return Spell.IceBarrier:Cast(Player)
+        end,
+        onlyOnce = true
+    },
+    {
+        isActionable = function()
+            print("Spell.FrostNova", SafeChannelInCombat())
+            return not SafeChannelInCombat() and (Spell.FrostNova:IsReady() or (Spell.ColdSnap:IsReady() and Spell.ColdSnap:Cast(Player)))
+        end,
+        act = function()
+            print("Cast Spell.FrostNova", SafeChannelInCombat())
+            Spell.FrostNova:Cast(Player)
+            GetSafeSpot()
+        end,
+        onlyOnce = true
+    },
+    {
+        isActionable = function()
+            print("MovingToSafeSpot")
+            return not SafeChannelInCombat() and MovingToSafeSpot and not DMW.Player.Rooted
+        end,
+        act = function()
+            print("Cast MovingToSafeSpot")
+            MoveTo(safeX, safeY, safeZ)
+        end,
+        removeWhen = function() return not MovingToSafeSpot end,
+    },
+    {
+        isActionable = function()
+            print("getBestUsableBandage")
+            return SafeChannelInCombat()
+        end,
+        act = function()
+            print("Cast getBestUsableBandage")
+            local bandage = getBestUsableBandage()
+            if(bandage and not Player.Casting) then
+                UseItemByName(bandage.Name, 'player')
+                return true
+            end 
+        end,
+        timeout = 1,
+    }
+}
+
+local function Defensive()
+    if SquenceAction:isBusy() then
+        return SquenceAction:doNext()
+    end
+
+    if  Setting("Use bandage") and 
+        Player.HP < Setting("Use bandage HP") and
+        not Player.RecentlyBandaged and
+        not SquenceAction:isBusy() and
+        getBestUsableBandage() then
+            SquenceAction:setSequence(bandageSequence)
+    end
+
+    if Setting("Kite") and MovingToSafeSpot and not DMW.Player.Rooted then
+        MoveTo(safeX, safeY, safeZ)
+    end
+
+    if Setting("Kite") and not MovingToSafeSpot and IsDistanceSafe(Target) then
+        GetSafeSpot()
     end
     
     if Setting("Ice Barrier") and Player.HP < Setting("Ice Barrier HP") and Spell.IceBarrier:IsReady() and not Buff.IceBarrier:Exist(player) and Spell.IceBarrier:Cast(Player) then
@@ -207,24 +318,11 @@ local function Defensive()
 		end
     end
     
-    if Setting("Evocation") and not Player.Moving and SafeChannelInCombat() and Player.Combat and Player.PowerPct < 30 then 
+    if Setting("Evocation") and not Player.Moving and SafeChannelInCombat() and Player.Combat and Player.PowerPct < 10 then 
 	    if Spell.Evocation:IsReady() and Spell.Evocation:Cast(Player) then
 		    return true
 		end
     end
-
-    if  Setting("Use bandage") and 
-        Setting("Use bandage HP") < Player.HP 
-        and not Player.RecentlyBandaged 
-        and not Player.Moving 
-        and SafeChannelInCombat()  
-        and Player.Combat then
-            local bandage = getBestUsableBandage()
-            if(bandage) then
-                UseItemByName(bandage.Name, 'player')
-                return true
-            end    
-    end 
 end
 
 local function AutoBuff()
